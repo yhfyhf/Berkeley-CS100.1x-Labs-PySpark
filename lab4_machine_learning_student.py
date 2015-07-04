@@ -660,12 +660,11 @@ movieCountsRDD = movieIDsWithAvgRatingsRDD.map(lambda p: (p[0], p[1][0]))
 predictedRDD = predictedRatingsRDD.map(lambda p: (p[1], p[2]))
 
 # Use RDD transformations with predictedRDD and movieCountsRDD to yield an RDD with tuples of the form (Movie ID, (Predicted Rating, number of ratings))
-predictedWithCountsRDD  = (predictedRDD
-                           .<FILL IN>)
+predictedWithCountsRDD  = predictedRDD.join(movieCountsRDD)
 
 # Use RDD transformations with PredictedWithCountsRDD and moviesRDD to yield an RDD with tuples of the form (Predicted Rating, Movie Name, number of ratings), for movies with more than 75 ratings
 ratingsWithNamesRDD = (predictedWithCountsRDD
-                       .<FILL IN>)
+                       .filter(lambda r: r[1][1] > 75).join(moviesRDD).map(lambda r: (r[1][0][0], r[1][1])))
 
 predictedHighestRatedMovies = ratingsWithNamesRDD.takeOrdered(20, key=lambda x: -x[0])
 print ('My highest rated movies as predicted (for movies with more than 75 reviews):\n%s' %

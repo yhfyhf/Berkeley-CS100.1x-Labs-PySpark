@@ -851,12 +851,12 @@ idfsFullCount = 17078
 print 'There are %s unique tokens in the full datasets.' % idfsFullCount
 
 # Recompute IDFs for full dataset
-idfsFullWeights = <FILL IN>
-idfsFullBroadcast = <FILL IN>
+idfsFullWeights = idfsFull.collectAsMap()
+idfsFullBroadcast = sc.broadcast(idfsFullWeights)
 
 # Pre-compute TF-IDF weights.  Build mappings from record ID weight vector.
-amazonWeightsRDD = <FILL IN>
-googleWeightsRDD = <FILL IN>
+amazonWeightsRDD = amazonFullRecToToken.map(lambda r: (r[0], tfidf(r[1], idfsFullWeights)))
+googleWeightsRDD = googleFullRecToToken.map(lambda r: (r[0], tfidf(r[1], idfsFullWeights)))
 print 'There are %s Amazon weights and %s Google weights.' % (amazonWeightsRDD.count(),
                                                               googleWeightsRDD.count())
 
@@ -878,10 +878,10 @@ Test.assertEquals(googleWeightsRDD.count(), 3226, 'incorrect googleWeightsRDD.co
 # In[ ]:
 
 # TODO: Replace <FILL IN> with appropriate code
-amazonNorms = amazonWeightsRDD.<FILL IN>
-amazonNormsBroadcast = <FILL IN>
-googleNorms = googleWeightsRDD.<FILL IN>
-googleNormsBroadcast = <FILL IN>
+amazonNorms = amazonWeightsRDD.map(lambda r: (r[0], norm(r[1]))).collectAsMap()
+amazonNormsBroadcast = sc.broadcast(amazonNorms)
+googleNorms = googleWeightsRDD.map(lambda r: (r[0], norm(r[1]))).collectAsMap()
+googleNormsBroadcast = sc.broadcast(googleNorms)
 
 
 # In[ ]:
@@ -976,8 +976,8 @@ Test.assertEquals(commonTokens.count(), 2441100, 'incorrect commonTokens.count()
 # In[ ]:
 
 # TODO: Replace <FILL IN> with appropriate code
-amazonWeightsBroadcast = <FILL IN>
-googleWeightsBroadcast = <FILL IN>
+amazonWeightsBroadcast = sc.broadcast(amazonWeightsRDD.collectAsMap())
+googleWeightsBroadcast = sc.broadcast(googleWeightsRDD.collectAsMap())
 
 def fastCosineSimilarity(record):
     """ Compute Cosine Similarity using Broadcast variables
@@ -986,16 +986,16 @@ def fastCosineSimilarity(record):
     Returns:
         pair: ((ID, URL), cosine similarity value)
     """
-    amazonRec = <FILL IN>
-    googleRec = <FILL IN>
-    tokens = <FILL IN>
-    s = <FILL IN>
-    value = <FILL IN>
+    amazonRec = record[0][0]
+    googleRec = record[0][1]
+    tokens = record[1]
+    s = sum([amazonWeightsBroadcast.value.get(amazonRec, {}).get(t, 0) * googleWeightsBroadcast.value.get(googleRec, {}).get(t, 0) for t in tokens])
+    value = s * 1.0 / amazonNormsBroadcast.value[amazonRec] / googleNormsBroadcast.value[googleRec]
     key = (amazonRec, googleRec)
-    return (key, value)
+    return key, value
 
 similaritiesFullRDD = (commonTokens
-                       .<FILL IN>
+                       .map(fastCosineSimilarity)
                        .cache())
 
 print similaritiesFullRDD.count()
